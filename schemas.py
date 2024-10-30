@@ -1,6 +1,4 @@
-from datetime import datetime
 from enum import Enum
-from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -15,6 +13,7 @@ class TaskType(str, Enum):
     INWORK = "in work"
     COMPLITED = "complited"
     FAILED = "failed"
+
 
 class Tasks(BaseModel):
     id: int
@@ -64,13 +63,15 @@ class TaskUpdate(BaseModel):
     def to_lower(cls, v):
         return v.lower() if isinstance(v, str) else v
 
+
 class TaskResponse(BaseModel):
     """Класс модели обновления задачи"""
-    id:int
-    title:str
-    description:str
-    status:str
-    user_id:int
+
+    id: int
+    title: str
+    description: str
+    status: str
+    user_id: int
 
     @field_validator("title", "description", "status")
     def to_lower(cls, v):
