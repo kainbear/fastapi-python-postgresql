@@ -4,10 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from models import Users
 from repository import Repository
 from schemas import TaskCreate, TaskResponse, TaskUpdate, Tasks, User
-from fastapi.security import OAuth2AuthorizationCodeBearer, OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import (
+    OAuth2AuthorizationCodeBearer,
+    OAuth2PasswordBearer,
+    OAuth2PasswordRequestForm,
+)
 from passlib.context import CryptContext
 import jwt
 from psycopg2 import IntegrityError
+from redis import Redis
 
 user_router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -18,13 +23,16 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 600
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 def verify_password(plain_password, hashed_password):
-    '''Функция для верификации пароля'''
+    """Функция для верификации пароля"""
     return pwd_context.verify(plain_password, hashed_password)
 
+
 def get_password_hash(password_hash):
-    '''Функция для получения хешированного пароля'''
+    """Функция для получения хешированного пароля"""
     return pwd_context.hash(password_hash)
+
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     """Функция для создания доступа токена"""
@@ -36,6 +44,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 @user_router.post("/register")
 async def register_user(user: Annotated[User, Depends()]):
@@ -58,19 +67,24 @@ async def register_user(user: Annotated[User, Depends()]):
 @user_router.post(
     "/login"
 )  # Вход в систему (POST /auth/login): возвращает access и refresh токены.
-async def login(form_data: OAuth2AuthorizationCodeBearer = Depends()):
-    '''Логин пользователя и получение токена'''
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    """Логин пользователя и получение токена"""
     user = await Users.get_or_none(username=form_data.username)
-    if not user or not pwd_context.verify(form_data.password_hash, user.password_hash):
+    if not user or not pwd_context.verify(form_data.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Неправильный логин или пароль")
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
+
 @user_router.post(
     "/refresh"
 )  # Обновление access токена (POST /auth/refresh) с использованием refresh токена.
-async def update_access_token():
-    pass
+async def update_access_token(Authorize: OAuth2PasswordBearer = Depends()):
+    Authorize.jwt_refresh_token_required()
+
+    current_user = Authorize.get_jwt_subject()
+    new_access_token = Authorize.create_access_token(subject=current_user)
+    return {"access_token": new_access_token}
 
 
 @user_router.delete("/{id}")
