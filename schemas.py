@@ -12,27 +12,12 @@ class Users:
 class TaskType(str, Enum):
     """Класс схемы статуса выполнения задачи"""
 
-    ATWORK = "in work"
+    INWORK = "in work"
     COMPLITED = "complited"
     FAILED = "failed"
 
-
-class Tasks:
-    title: str
-    description: str
-    status: TaskType = Field(
-        description="Type of task: 'in work', 'complited', 'failed'"
-    )
-    user_id: int | None = None
-
-    @field_validator("title", "description", "status")
-    def to_lower(cls, v):
-        return v.lower() if isinstance(v, str) else v
-
-
-class TaskUpdate(BaseModel):
-    """Класс модели обновления задачи"""
-
+class Tasks(BaseModel):
+    id: int
     title: str
     description: str
     status: TaskType = Field(
@@ -50,14 +35,12 @@ class TaskCreate(BaseModel):
 
     title: str
     description: str
-    due_date: datetime
-    actual_due_date: datetime | None = None
-    hours_spent: int = 0
+    status: TaskType = Field(
+        description="Type of task: 'in work', 'complited', 'failed'"
+    )
     user_id: int | None = None
-    project_id: int
-    type: TaskType = Field(description="Type of task: 'at work', 'complited', 'failed'")
 
-    @field_validator("title", "description")
+    @field_validator("title", "description", "status")
     def to_lower(cls, v):
         return v.lower() if isinstance(v, str) else v
 
@@ -65,3 +48,30 @@ class TaskCreate(BaseModel):
         """Класс таблицы задач"""
 
         table = "tasks"
+
+
+class TaskUpdate(BaseModel):
+    """Класс модели обновления задачи"""
+
+    title: str | None = None
+    description: str | None = None
+    status: TaskType = Field(
+        description="Type of task: 'in work', 'complited', 'failed'"
+    )
+    user_id: int | None = None
+
+    @field_validator("title", "description", "status")
+    def to_lower(cls, v):
+        return v.lower() if isinstance(v, str) else v
+
+class TaskResponse(BaseModel):
+    """Класс модели обновления задачи"""
+    id:int
+    title:str
+    description:str
+    status:str
+    user_id:int
+
+    @field_validator("title", "description", "status")
+    def to_lower(cls, v):
+        return v.lower() if isinstance(v, str) else v
