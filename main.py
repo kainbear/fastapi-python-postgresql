@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from router import user_router, task_router
 
 app = FastAPI(
-        title="TestCase",
+        title="Веб-приложение TestCase4",
         version="1.0.0",
         description="Сервис для регистрации и создания пользователей, так же для создания и хранения задач.",
     )
