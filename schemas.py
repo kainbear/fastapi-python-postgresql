@@ -6,14 +6,15 @@ class User(BaseModel):
     username: str
     password_hash: str
 
-    @field_validator("username", "password_hash")
-    def to_lower(cls, v):
-        """Функция для смены регистра в нижний предел"""
-        return v.lower() if isinstance(v, str) else v
-    
     class ConfigDict:
-        '''Класс настройки'''
+        """Класс настройки"""
+
         from_attributes = True
+
+
+class TokenRefreshRequest(BaseModel):
+    username: str
+    refresh_token: str
 
 
 class TaskType(str, Enum):

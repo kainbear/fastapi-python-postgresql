@@ -8,18 +8,10 @@ class Repository(BaseModel):
     """Класс функций для роутера"""
 
     @classmethod
-    async def delete_user(cls,id: int) -> bool:
-        '''Функция для удаления работника'''
-        usr = await Users.get_or_none(id=id)
-        if usr:
-            await usr.delete()
-            return usr
-        return usr
-
-    @classmethod
     async def create_task(cls, task: TaskCreate) -> Tasks:
         """Функция для создания новой задачи"""
-        return await Tasks.create(**task.model_dump())
+        task_data = task.model_dump()
+        return await Tasks.create(**task_data)
 
     @classmethod
     async def get_task(
@@ -36,6 +28,8 @@ class Repository(BaseModel):
     async def update_task(cls, id: int, tasks: TaskUpdate):
         """Функция для обновления задачи"""
         task = await Tasks.get_or_none(id=id)
+        if not task:
+            return None
         await task.update_from_dict(tasks.model_dump(exclude_none=True))
         await task.save()
         return task

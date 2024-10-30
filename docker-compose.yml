@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    container_name: testcase4
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres-db
+      - redis
+    environment:
+      DATABASE_URL: postgres://dbtestcase4:dbtestcase4@dbtestcase4:5432/dbtestcase4
+
+  postgres-db:
+    image: postgres:16
+    container_name: dbtestcase4
+    environment:
+      POSTGRES_DB: dbtestcase4
+      POSTGRES_USER: dbtestcase4
+      POSTGRES_PASSWORD: dbtestcase4
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
