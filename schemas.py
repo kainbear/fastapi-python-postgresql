@@ -2,9 +2,18 @@ from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 
 
-class Users:
+class User(BaseModel):
     username: str
-    password_hash: int
+    password_hash: str
+
+    @field_validator("username", "password_hash")
+    def to_lower(cls, v):
+        """Функция для смены регистра в нижний предел"""
+        return v.lower() if isinstance(v, str) else v
+    
+    class ConfigDict:
+        '''Класс настройки'''
+        from_attributes = True
 
 
 class TaskType(str, Enum):

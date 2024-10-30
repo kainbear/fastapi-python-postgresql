@@ -8,14 +8,29 @@ class Repository(BaseModel):
     """Класс функций для роутера"""
 
     @classmethod
-    async def get_tasks(cls):
-        """Функция для получения списка всех задач"""
-        return await Tasks.all()
+    async def delete_user(cls,id: int) -> bool:
+        '''Функция для удаления работника'''
+        usr = await Users.get_or_none(id=id)
+        if usr:
+            await usr.delete()
+            return usr
+        return usr
 
     @classmethod
     async def create_task(cls, task: TaskCreate) -> Tasks:
         """Функция для создания новой задачи"""
         return await Tasks.create(**task.model_dump())
+
+    @classmethod
+    async def get_task(
+        cls,
+        status: Optional[str] = None,
+    ) -> List[Tasks]:
+        """Функция для получения задач по фильтрам"""
+        query = Tasks.all()
+        if status:
+            query = query.filter(status__icontains=status)
+        return await query
 
     @classmethod
     async def update_task(cls, id: int, tasks: TaskUpdate):
@@ -33,14 +48,3 @@ class Repository(BaseModel):
             await task.delete()
             return True
         return False
-
-    @classmethod
-    async def get_task(
-        cls,
-        status: Optional[str] = None,
-    ) -> List[Tasks]:
-        """Функция для получения задач по фильтрам"""
-        query = Tasks.all()
-        if status:
-            query = query.filter(status__icontains=status)
-        return await query

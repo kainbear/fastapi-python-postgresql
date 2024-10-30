@@ -1,32 +1,70 @@
+from datetime import datetime, timedelta
 from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from models import Users
 from repository import Repository
-from schemas import TaskCreate, TaskResponse, TaskUpdate, Tasks
+from schemas import TaskCreate, TaskResponse, TaskUpdate, Tasks, User
+from fastapi.security import OAuth2AuthorizationCodeBearer, OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from passlib.context import CryptContext
+import jwt
+from psycopg2 import IntegrityError
 
 user_router = APIRouter(prefix="/auth", tags=["Auth"])
 
 repo = Repository()
 
+SECRET_KEY = "testcase"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 600
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-"""
-Добавьте аутентификацию пользователей по Bearer-токену:
-Используйте access и refresh токены для подтверждения операций с задачами.
-"""
+def verify_password(plain_password, hashed_password):
+    '''Функция для верификации пароля'''
+    return pwd_context.verify(plain_password, hashed_password)
 
+def get_password_hash(password_hash):
+    '''Функция для получения хешированного пароля'''
+    return pwd_context.hash(password_hash)
 
-@user_router.post(
-    "/register"
-)  # Регистрация пользователя (POST /auth/register): принимает username и password
-async def register_user():
-    pass
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    """Функция для создания доступа токена"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now() + expires_delta
+    else:
+        expire = datetime.now() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+@user_router.post("/register")
+async def register_user(user: Annotated[User, Depends()]):
+    """Регистрация пользователя"""
+    hashed_password = pwd_context.hash(user.password_hash)
+    user_data = user.model_dump()
+    user_data["password_hash"] = hashed_password
+
+    try:
+        new_employee = await Users.create(**user_data)
+        access_token = create_access_token(data={"sub": new_employee.username})
+        return {"access_token": access_token, "token_type": "bearer"}
+    except IntegrityError:
+        raise HTTPException(
+            status_code=400,
+            detail="Пользователь с username уже существует",
+        )
 
 
 @user_router.post(
     "/login"
 )  # Вход в систему (POST /auth/login): возвращает access и refresh токены.
-async def login_user():
-    pass
-
+async def login(form_data: OAuth2AuthorizationCodeBearer = Depends()):
+    '''Логин пользователя и получение токена'''
+    user = await Users.get_or_none(username=form_data.username)
+    if not user or not pwd_context.verify(form_data.password_hash, user.password_hash):
+        raise HTTPException(status_code=400, detail="Неправильный логин или пароль")
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @user_router.post(
     "/refresh"
@@ -36,8 +74,12 @@ async def update_access_token():
 
 
 @user_router.delete("/{id}")
-async def delete_user():
-    pass
+async def delete_user(id: int):
+    """Функция для удаления пользователя"""
+    success = await repo.delete_user(id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"detail": "User deleted"}
 
 
 task_router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -68,6 +110,7 @@ async def search_task(
         raise HTTPException(status_code=404, detail="Tasks not found")
     return tasks
 
+
 @task_router.put(
     "/{id}", response_model=TaskResponse
 )  # Обновление задачи (PUT /tasks/{id}) — редактирование названия, описания и статуса.
@@ -89,4 +132,3 @@ async def delete_task(id: int):
     if not success:
         raise HTTPException(status_code=404, detail="Task not found")
     return {"detail": "Task deleted"}
-
